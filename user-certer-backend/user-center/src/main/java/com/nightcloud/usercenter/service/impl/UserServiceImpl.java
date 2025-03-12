@@ -2,6 +2,8 @@ package com.nightcloud.usercenter.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.nightcloud.usercenter.common.ErrorCode;
+import com.nightcloud.usercenter.exception.BusinessException;
 import com.nightcloud.usercenter.model.entity.User;
 import com.nightcloud.usercenter.service.UserService;
 import com.nightcloud.usercenter.mapper.UserMapper;
@@ -39,13 +41,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public long userRegister(String userAccount, String userPassword, String checkPassword) {
         // 校验
         if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword)) {
-            return -1;
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数错误");
         }
         if (userAccount.length() < 4) {
-            return -1;
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户账号过短");
         }
         if (userPassword.length() < 8 || !userPassword.equals(checkPassword)) {
-            return -1;
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "密码长度过短");
         }
         // 账户中不能包含特殊字符
         String validataRegExp = "[^a-zA-Z0-9]";
@@ -58,7 +60,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         queryWrapper.eq("userAccount", userAccount);
         Long count = userMapper.selectCount(queryWrapper);
         if (count > 0) {
-            return -1;
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户账号重复");
         }
 
         // 加密

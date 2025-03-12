@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.nightcloud.usercenter.common.BaseResponse;
 import com.nightcloud.usercenter.common.ErrorCode;
 import com.nightcloud.usercenter.common.ResultUtils;
+import com.nightcloud.usercenter.exception.BusinessException;
 import com.nightcloud.usercenter.model.entity.User;
 import com.nightcloud.usercenter.model.entity.request.UserLoginRequest;
 import com.nightcloud.usercenter.model.entity.request.UserRegisterRequest;
@@ -29,7 +30,7 @@ public class UserController {
     @PostMapping("/register")
     public BaseResponse<Long> userRegister(@RequestBody UserRegisterRequest userRegisterRequest) {
         if (userRegisterRequest == null) {
-            return ResultUtils.error(ErrorCode.PARAMS_ERROR);
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"参数为空");
         }
         String userAccount = userRegisterRequest.getUserAccount();
         String userPassword = userRegisterRequest.getUserPassword();
@@ -44,12 +45,12 @@ public class UserController {
     @PostMapping("/login")
     public BaseResponse<User> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
         if (userLoginRequest == null) {
-            return ResultUtils.error(ErrorCode.PARAMS_ERROR);
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"用户未登录");
         }
         String userAccount = userLoginRequest.getUserAccount();
         String userPassword = userLoginRequest.getUserPassword();
         if (StringUtils.isAnyBlank(userAccount, userPassword)) {
-            return ResultUtils.error(ErrorCode.PARAMS_ERROR);
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"参数为空");
         }
         User user = userService.userLogin(userAccount, userPassword, request);
         return ResultUtils.success(user);
@@ -63,7 +64,7 @@ public class UserController {
     @GetMapping("/search")
     public BaseResponse<List<User>> searchUsers(String username,HttpServletRequest request) {
         if (!isAdmin(request)) {
-            return null;
+            throw new BusinessException(ErrorCode.NO_AUTH,"无权限");
         }
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         if (StringUtils.isNotBlank(username)) {
@@ -77,24 +78,13 @@ public class UserController {
     @PostMapping("/delete")
     public BaseResponse<Boolean> deleteUser(@RequestParam long id,HttpServletRequest request) {
         if (!isAdmin(request)) {
-            return null;
+            throw new BusinessException(ErrorCode.NO_AUTH,"无权限");
         }
         if (id < 0) {
-            return null;
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"参数错误");
         }
         boolean b = userService.removeById(id);
         return ResultUtils.success(b);
-    }
-
-    /**
-     * 判断是否为管理员
-     * @param request
-     * @return
-     */
-    private boolean isAdmin(HttpServletRequest request) {
-        Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
-        User user = (User) userObj;
-        return user != null && user.getUserRole() == ADMIN_ROLE;
     }
 
     @GetMapping("/current")
@@ -102,7 +92,7 @@ public class UserController {
         Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
         User currentUser = (User) userObj;
         if (currentUser == null) {
-            return null;
+            throw new BusinessException(ErrorCode.NOT_LOGIN,"用户未登录");
         }
         long userId = currentUser.getId();
         // 校验用户是否合法
@@ -114,9 +104,20 @@ public class UserController {
     @PostMapping("/logout")
     public BaseResponse<Integer> userLogout(HttpServletRequest request) {
         if (request == null) {
-            return null;
+            throw new BusinessException(ErrorCode.PARAMS_ERROR,"参数为空");
         }
         int result = userService.userLogout(request);
         return ResultUtils.success(result);
+    }
+
+    /**
+     * 判断是否为管理员
+     * @param request
+     * @return
+     */
+    private boolean isAdmin(HttpServletRequest request) {
+        Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
+        User user = (User) userObj;
+        return user != null && user.getUserRole() == ADMIN_ROLE;
     }
 }
